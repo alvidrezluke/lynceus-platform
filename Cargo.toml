@@ -1,4 +1,4 @@
-workspace = { members = ["src/kinematics"] }
+workspace = { members = ["src/kinematics-controller"] }
 [package]
 name = "lynceus-platform"
 version = "0.1.0"

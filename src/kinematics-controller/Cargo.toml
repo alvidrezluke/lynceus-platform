@@ -1,0 +1,10 @@
+[package]
+name = "kinematics-controller"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+thiserror = "=1.0.24"
+ndarray = "0.15.6"
+rust_decimal = "1.35.0"
+rust_decimal_macros = "1.35.0"
