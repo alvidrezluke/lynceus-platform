@@ -1,7 +1,9 @@
+#![warn(missing_docs)]
 mod maestro;
 mod error;
 
 pub use maestro::Maestro;
+pub use maestro::MovingState;
 
 
 #[cfg(test)]
