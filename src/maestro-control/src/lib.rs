@@ -1,14 +1,15 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod maestro;
+mod error;
+
+pub use maestro::Maestro;
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn test_maestro_error() {
+        assert!(Maestro::new("COM0").is_err())
     }
 }
