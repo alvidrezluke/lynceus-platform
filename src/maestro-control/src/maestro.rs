@@ -94,7 +94,7 @@ impl Maestro {
     /// - `UnableToSend` if serial port was unable to send command to Maestro
     pub fn set_accelerations(&mut self, channels: Vec<u8>, accels: Vec<u16>) -> Result<(), MaestroError> {
         for (channel, accel) in channels.into_iter().zip(accels.into_iter()) {
-            self.set_accel(channel, accel)?;
+            self.set_acceleration(channel, accel)?;
         }
         Ok(())
     }
@@ -120,7 +120,7 @@ impl Maestro {
     /// - `UnableToSend` if serial port was unable to send command to Maestro
     pub fn set_positions(&mut self, channels: Vec<u8>, positions: Vec<u16>) -> Result<(), MaestroError> {
         for (channel, pos) in channels.into_iter().zip(positions.into_iter()) {
-            self.set_pos(channel, pos)?;
+            self.set_position(channel, pos)?;
         }
         Ok(())
     }
