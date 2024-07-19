@@ -8,7 +8,7 @@ use crate::error::MaestroError;
 /// # Example:
 /// ```
 /// use maestro_control::Maestro;
-/// let mut maestro = Maestro::new("COM1").unwrap();
+/// let mut maestro = Maestro::new("COM1");
 /// ```
 pub struct Maestro {
     serial_port: Box<dyn SerialPort>
@@ -41,11 +41,9 @@ impl Maestro {
     /// # Errors:
     /// - `InvalidChannel` if channel is out of range
     /// - `UnableToSend` if serial port was unable to send command to Maestro
-    pub fn set_acceleration(&mut self, channel: u8, accel: u16) -> Result<(), MaestroError> {
+    pub fn set_acceleration(&mut self, channel: u8, acceleration: u16) -> Result<(), MaestroError> {
         verify_channel_range(channel)?;
-        let mut data: [u8; 4] = [0x89, channel, 0, 0];
-        data[2..].copy_from_slice(&u16_to_u8(accel));
-        self.send_command_no_response(&data)
+        self.send_command_no_response(&form_data(0x84, channel, acceleration))
     }
 
     /// Sets the speed of a single channel.
@@ -56,9 +54,7 @@ impl Maestro {
     /// - `UnableToSend` if serial port was unable to send command to Maestro
     pub fn set_speed(&mut self, channel: u8, speed: u16) -> Result<(), MaestroError> {
         verify_channel_range(channel)?;
-        let mut data: [u8; 4] = [0x87, channel, 0, 0];
-        data[2..].copy_from_slice(&u16_to_u8(speed));
-        self.send_command_no_response(&data)
+        self.send_command_no_response(&form_data(0x84, channel, speed))
     }
 
     /// Sets the position of a single channel.
@@ -69,9 +65,7 @@ impl Maestro {
     /// - `UnableToSend` if serial port was unable to send command to Maestro
     pub fn set_position(&mut self, channel: u8, position: u16) -> Result<(), MaestroError> {
         verify_channel_range(channel)?;
-        let mut data: [u8; 4] = [0x84, channel, 0, 0];
-        data[2..].copy_from_slice(&u16_to_u8(position));
-        self.send_command_no_response(&data)
+        self.send_command_no_response(&form_data(0x84, channel, position))
     }
 
     /// Gets the position of a single channel.
@@ -183,11 +177,13 @@ impl Maestro {
 /// ```
 /// use maestro_control::{Maestro, MovingState};
 ///
-/// let mut maestro = Maestro::new("COM1").unwrap();
-/// match maestro.get_moving_state() {
-///     Ok(MovingState::ServosMoving) => println!("Servos still moving!"),
-///     Ok(MovingState::ServosStopped) => println!("All servos have stopped moving!"),
-///     Err(e) => println!("{:?}", e),
+/// let mut m = Maestro::new("COM1");
+/// if let Ok(mut maestro) = m {
+///     match maestro.get_moving_state() {
+///         Ok(MovingState::ServosMoving) => println!("Servos still moving!"),
+///         Ok(MovingState::ServosStopped) => println!("All servos have stopped moving!"),
+///         Err(e) => println!("{:?}", e),
+///     }
 /// }
 /// ```
 pub enum MovingState {
@@ -197,8 +193,18 @@ pub enum MovingState {
     ServosStopped
 }
 
-fn u16_to_u8(input: u16) -> [u8; 2] {
-    [ (input & 0x7F) as u8, (input >> 7 & 0x7F) as u8 ]
+fn form_data(command: u8, channel: u8, data:u16) -> [u8; 4] {
+    let mut bytes: &[u8; 2] = &data.to_be_bytes();
+    [command, channel, bytes[1], bytes[0]]
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    #[test]
+    fn test() {
+        assert_eq!(form_data(0x84, 0x00, 2000), [0x84, 0x00, 0xD0, 0x07])
+    }
 }
 
 const MAX_CHANNEL: u8 = 11;
