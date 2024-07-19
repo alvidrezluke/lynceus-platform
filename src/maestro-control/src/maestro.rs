@@ -135,7 +135,7 @@ impl Maestro {
     pub fn get_pos_motors(&mut self, channels: Vec<u8>) -> Result<Vec<i32>, MaestroError> {
         let mut motor_positions: Vec<i32> = Vec::with_capacity(channels.len());
         for channel in channels {
-            motor_positions.push(self.get_pos(channel)?);
+            motor_positions.push(self.get_position(channel)?);
         }
         Ok(motor_positions)
     }
