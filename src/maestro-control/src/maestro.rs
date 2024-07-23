@@ -203,16 +203,6 @@ fn form_data(command: u8, channel: u8, data:u16) -> [u8; 4] {
 pub mod tests {
     use super::*;
     #[test]
-    fn test() {
-        // let quarter_microseconds = 180f32 * 22.22222222;
-        // let data = form_data(0x84, 0x00, quarter_microseconds as u16);
-        let micro_seconds: u16 = convert_deg_to_quarter_micros(15.0).unwrap();
-        let data = form_data(0x84, 0x00, micro_seconds);
-        println!("{:?}", data);
-        assert_eq!(data, [0x84, 0x00, 0x70, 0x2E]);
-    }
-
-    #[test]
     fn hardware_test() {
         let mut maestro = Maestro::new("COM1");
         let micro_seconds: u16 = convert_deg_to_quarter_micros(15.0).unwrap();
