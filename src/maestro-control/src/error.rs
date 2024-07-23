@@ -11,5 +11,7 @@ pub enum MaestroError {
     #[error("Unable to receive date!")]
     UnableToReceive,
     #[error("Invalid moving state received from Maestro. Value should be 0 or 1")]
-    InvalidMovingState
+    InvalidMovingState,
+    #[error("Input out of bounds")]
+    OutOfBounds
 }

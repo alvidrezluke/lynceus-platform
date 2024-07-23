@@ -60,12 +60,14 @@ impl Maestro {
     /// Sets the position of a single channel.
     ///
     /// `channel` should be a valid channel < 12.
+    /// `position` should be in degrees.
     /// # Errors:
     /// - `InvalidChannel` if channel is out of range
     /// - `UnableToSend` if serial port was unable to send command to Maestro
     pub fn set_position(&mut self, channel: u8, position: u16) -> Result<(), MaestroError> {
         verify_channel_range(channel)?;
-        self.send_command_no_response(&form_data(0x84, channel, position))
+        let quarter_microseconds = position as f32 * 22.22222222;
+        self.send_command_no_response(&form_data(0x84, channel, quarter_microseconds as u16))
     }
 
     /// Gets the position of a single channel.
@@ -194,16 +196,23 @@ pub enum MovingState {
 }
 
 fn form_data(command: u8, channel: u8, data:u16) -> [u8; 4] {
-    let mut bytes: &[u8; 2] = &data.to_be_bytes();
-    [command, channel, bytes[1], bytes[0]]
+    [command, channel, (data & 0x7F) as u8, ((data >> 7) & 0x7F) as u8]
 }
+
+const SERVO_MIN:u16 = 496;
+const SERVO_MAX:u16 = 2496;
 
 #[cfg(test)]
 pub mod tests {
     use super::*;
     #[test]
     fn test() {
-        assert_eq!(form_data(0x84, 0x00, 2000), [0x84, 0x00, 0xD0, 0x07])
+        // let quarter_microseconds = 180f32 * 22.22222222;
+        // let data = form_data(0x84, 0x00, quarter_microseconds as u16);
+        let micro_seconds: u16 = convert_deg_to_quarter_micros(15.0).unwrap();
+        let data = form_data(0x84, 0x00, micro_seconds);
+        println!("{:?}", data);
+        assert_eq!(data, [0x84, 0x00, 0x70, 0x2E])
     }
 }
 
@@ -215,4 +224,9 @@ fn verify_channel_range(channel: u8) -> Result<(), MaestroError> {
     } else {
         Ok(())
     }
+}
+
+fn convert_deg_to_quarter_micros(deg: f64) -> Result<u16, MaestroError> {
+    if deg < 0.0 || deg > 180.0 { return Err(MaestroError::OutOfBounds) }
+    return Ok((deg * 22.2222222222222222222) as u16 + 496)
 }
