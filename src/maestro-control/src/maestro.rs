@@ -38,48 +38,53 @@ impl Maestro {
     /// Sets the acceleration of a single channel.
     ///
     /// `channel` should be a valid channel < 12.
+    /// `acceleration` is any u8
     /// # Errors:
     /// - `InvalidChannel` if channel is out of range
     /// - `UnableToSend` if serial port was unable to send command to Maestro
-    pub fn set_acceleration(&mut self, channel: u8, acceleration: u16) -> Result<(), MaestroError> {
+    pub fn set_acceleration(&mut self, channel: u8, acceleration: u8) -> Result<(), MaestroError> {
         verify_channel_range(channel)?;
-        self.send_command_no_response(&form_data(0x84, channel, acceleration))
+        self.send_command_no_response(&form_data(0x84, channel, acceleration as u16))
     }
 
     /// Sets the speed of a single channel.
     ///
     /// `channel` should be a valid channel < 12.
+    /// `speed` is any u8
     /// # Errors:
     /// - `InvalidChannel` if channel is out of range
     /// - `UnableToSend` if serial port was unable to send command to Maestro
-    pub fn set_speed(&mut self, channel: u8, speed: u16) -> Result<(), MaestroError> {
+    pub fn set_speed(&mut self, channel: u8, speed: u8) -> Result<(), MaestroError> {
         verify_channel_range(channel)?;
-        self.send_command_no_response(&form_data(0x84, channel, speed))
+        self.send_command_no_response(&form_data(0x84, channel, speed as u16))
     }
 
     /// Sets the position of a single channel.
     ///
     /// `channel` should be a valid channel < 12.
-    /// `position` should be in degrees.
+    /// `positions` should be a degree 0 <= x <= 180
     /// # Errors:
     /// - `InvalidChannel` if channel is out of range
     /// - `UnableToSend` if serial port was unable to send command to Maestro
-    pub fn set_position(&mut self, channel: u8, position: u16) -> Result<(), MaestroError> {
+    pub fn set_position(&mut self, channel: u8, degree: f64) -> Result<(), MaestroError> {
         verify_channel_range(channel)?;
-        let quarter_microseconds = position as f32 * 22.22222222;
-        self.send_command_no_response(&form_data(0x84, channel, quarter_microseconds as u16))
+        let data = convert_deg_to_quarter_micros(degree)?;
+        self.send_command_no_response(&form_data(0x84, channel, data))
     }
 
     /// Gets the position of a single channel.
     ///
     /// `channel` should be a valid channel < 12.
+    ///
+    /// Returns the position in degrees.
     /// # Errors:
     /// - `InvalidChannel` if channel is out of range
     /// - `UnableToSend` if serial port was unable to send command to Maestro
     /// - `UnableToReceive` if Maestro sends back invalid data
-    pub fn get_position(&mut self, channel: u8) -> Result<i32, MaestroError> {
+    pub fn get_position(&mut self, channel: u8) -> Result<f64, MaestroError> {
         verify_channel_range(channel)?;
-        self.send_command(&[0x90, channel])
+        let pos = self.send_command(&[0x90, channel])?;
+        return Ok(convert_int_to_deg(pos));
     }
 
     /// Set the accelerations of all channels in vector.
@@ -88,8 +93,8 @@ impl Maestro {
     /// # Errors:
     /// - `InvalidChannel` if channel is out of range
     /// - `UnableToSend` if serial port was unable to send command to Maestro
-    pub fn set_accelerations(&mut self, channels: Vec<u8>, accels: Vec<u16>) -> Result<(), MaestroError> {
-        for (channel, accel) in channels.into_iter().zip(accels.into_iter()) {
+    pub fn set_accelerations(&mut self, channels: Vec<u8>, accelerations: Vec<u8>) -> Result<(), MaestroError> {
+        for (channel, accel) in channels.into_iter().zip(accelerations.into_iter()) {
             self.set_acceleration(channel, accel)?;
         }
         Ok(())
@@ -101,7 +106,7 @@ impl Maestro {
     /// # Errors:
     /// - `InvalidChannel` if channel is out of range
     /// - `UnableToSend` if serial port was unable to send command to Maestro
-    pub fn set_speeds(&mut self, channels: Vec<u8>, speeds: Vec<u16>) -> Result<(), MaestroError> {
+    pub fn set_speeds(&mut self, channels: Vec<u8>, speeds: Vec<u8>) -> Result<(), MaestroError> {
         for (channel, speed) in channels.into_iter().zip(speeds.into_iter()) {
             self.set_speed(channel, speed)?;
         }
@@ -111,10 +116,11 @@ impl Maestro {
     /// Sets the positions of all channels in vector.
     ///
     /// `channels` should be a vector of valid channels < 12.
+    /// `positions` should be a degree 0 <= x <= 180
     /// # Errors:
     /// - `InvalidChannel` if channel is out of range
     /// - `UnableToSend` if serial port was unable to send command to Maestro
-    pub fn set_positions(&mut self, channels: Vec<u8>, positions: Vec<u16>) -> Result<(), MaestroError> {
+    pub fn set_positions(&mut self, channels: Vec<u8>, positions: Vec<f64>) -> Result<(), MaestroError> {
         for (channel, pos) in channels.into_iter().zip(positions.into_iter()) {
             self.set_position(channel, pos)?;
         }
@@ -128,8 +134,8 @@ impl Maestro {
     /// - `InvalidChannel` if channel is out of range
     /// - `UnableToSend` if serial port was unable to send command to Maestro
     /// - `UnableToReceive` if Maestro sends back invalid data
-    pub fn get_pos_motors(&mut self, channels: Vec<u8>) -> Result<Vec<i32>, MaestroError> {
-        let mut motor_positions: Vec<i32> = Vec::with_capacity(channels.len());
+    pub fn get_pos_motors(&mut self, channels: Vec<u8>) -> Result<Vec<f64>, MaestroError> {
+        let mut motor_positions: Vec<f64> = Vec::with_capacity(channels.len());
         for channel in channels {
             motor_positions.push(self.get_position(channel)?);
         }
@@ -199,18 +205,6 @@ fn form_data(command: u8, channel: u8, data:u16) -> [u8; 4] {
     [command, channel, (data & 0x7F) as u8, ((data >> 7) & 0x7F) as u8]
 }
 
-#[cfg(test)]
-pub mod tests {
-    use super::*;
-    #[test]
-    fn hardware_test() {
-        let mut maestro = Maestro::new("COM1");
-        let micro_seconds: u16 = convert_deg_to_quarter_micros(15.0).unwrap();
-        let data = form_data(0x84, 0x00, micro_seconds);
-        maestro.unwrap().send_command_no_response(&data).unwrap();
-    }
-}
-
 const MAX_CHANNEL: u8 = 11;
 
 fn verify_channel_range(channel: u8) -> Result<(), MaestroError> {
@@ -224,4 +218,20 @@ fn verify_channel_range(channel: u8) -> Result<(), MaestroError> {
 fn convert_deg_to_quarter_micros(deg: f64) -> Result<u16, MaestroError> {
     if deg < 0.0 || deg > 180.0 { return Err(MaestroError::OutOfBounds) }
     return Ok((deg * 44.444) as u16 + 1984)
+}
+
+fn convert_int_to_deg(i: i32) -> f64 {
+    return (i as f64 - 1984f64) / 44.44;
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    #[test]
+    fn hardware_test() {
+        let mut maestro = Maestro::new("COM1");
+        let micro_seconds: u16 = convert_deg_to_quarter_micros(15.0).unwrap();
+        let data = form_data(0x84, 0x00, micro_seconds);
+        maestro.unwrap().send_command_no_response(&data).unwrap();
+    }
 }
