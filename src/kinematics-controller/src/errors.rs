@@ -13,4 +13,6 @@ pub enum KinematicsError{
 pub enum MathError{
     #[error("Converting Decimal to Float 64 has failed")]
     InvalidFloatConversion,
+    #[error("Error at angle")]
+    InvalidAngle,
 }
