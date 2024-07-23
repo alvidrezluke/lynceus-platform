@@ -212,7 +212,15 @@ pub mod tests {
         let micro_seconds: u16 = convert_deg_to_quarter_micros(15.0).unwrap();
         let data = form_data(0x84, 0x00, micro_seconds);
         println!("{:?}", data);
-        assert_eq!(data, [0x84, 0x00, 0x70, 0x2E])
+        assert_eq!(data, [0x84, 0x00, 0x70, 0x2E]);
+    }
+
+    #[test]
+    fn hardware_test() {
+        let mut maestro = Maestro::new("COM1");
+        let micro_seconds: u16 = convert_deg_to_quarter_micros(15.0).unwrap();
+        let data = form_data(0x84, 0x00, micro_seconds);
+        maestro.unwrap().send_command_no_response(&data).unwrap();
     }
 }
 
