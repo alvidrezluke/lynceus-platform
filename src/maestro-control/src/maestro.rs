@@ -199,9 +199,6 @@ fn form_data(command: u8, channel: u8, data:u16) -> [u8; 4] {
     [command, channel, (data & 0x7F) as u8, ((data >> 7) & 0x7F) as u8]
 }
 
-const SERVO_MIN:u16 = 496;
-const SERVO_MAX:u16 = 2496;
-
 #[cfg(test)]
 pub mod tests {
     use super::*;
@@ -236,5 +233,5 @@ fn verify_channel_range(channel: u8) -> Result<(), MaestroError> {
 
 fn convert_deg_to_quarter_micros(deg: f64) -> Result<u16, MaestroError> {
     if deg < 0.0 || deg > 180.0 { return Err(MaestroError::OutOfBounds) }
-    return Ok((deg * 22.2222222222222222222) as u16 + 496)
+    return Ok((deg * 44.444) as u16 + 1984)
 }
